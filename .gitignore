@@ -1,45 +1,30 @@
-Thumbs.db*
-.DS_Store
-HELP.md
-.gradle
+# Сборочные артефакты Gradle/Maven
+.gradle/
 build/
+target/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
+# IDE
+.idea/
 *.iml
+*.iws
 *.ipr
 out/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# ОС и логи
+.DS_Store
+Thumbs.db
+*.log
+logs/
 
-### VS Code ###
-.vscode/
+# Базы данных
+*.db
+*.sqlite
+*.h2.db
 
-### Package Files ###
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+# Allure
+allure-results/
+allure-report/
 
-### Exclusions ###
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**
-!**/src/test/**
+# Игнорируем ВСЁ в artifacts/, КРОМЕ app-deadline.jar
+artifacts/*
+!artifacts/app-deadline.jar
