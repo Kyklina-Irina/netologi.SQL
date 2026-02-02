@@ -1,84 +1,53 @@
+package ru.netology;
+
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
+import io.github.bonigarcia.wdm.WebDriverManager;
+import io.qameta.allure.selenide.AllureSelenide;
+import com.codeborne.selenide.logevents.SelenideLogger;
 import org.junit.jupiter.api.*;
-import java.sql.*;
+import ru.netology.pages.LoginPage;
+import ru.netology.pages.VerificationPage;
+import ru.netology.pages.DashboardPage;
 
-import static com.codeborne.selenide.Condition.*;
-import static com.codeborne.selenide.Selenide.$;
+import static com.codeborne.selenide.Selenide.open;
 
 public class DeadlineAuthTest {
 
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/deadline";
-    private static final String DB_USER = "app";
-    private static final String DB_PASS = "pass";
-
     @BeforeAll
     static void setUpAll() {
+        WebDriverManager.chromedriver().setup();
         Configuration.browser = "chrome";
-        Configuration.headless = true; // можно false для отладки
+        Configuration.headless = true;
         Configuration.timeout = 10000;
+        SelenideLogger.addListener("AllureSelenide", new AllureSelenide());
     }
 
-    @AfterEach
-    void tearDown() {
-        Selenide.closeWebDriver();
+    @BeforeEach
+    void setUp() {
+        open("http://localhost:9999"); // ТОЛЬКО открытие страницы, БЕЗ очистки БД!
     }
 
     @Test
-    void shouldLoginWithValidCodeFromDB() throws SQLException {
-        String login = "vasya";
-        String password = "qwerty123";
+    void shouldLoginWithValidCodeFromDB() {
+        var authInfo = DataHelper.getAuthInfo();
+        var loginPage = new LoginPage();
+        var verificationPage = loginPage.validLogin(authInfo);
 
-        // Получаем код из БД
-        String authCode = getAuthCodeFromDB(login);
+        var verificationCode = DataHelper.getVerificationCodeFor(authInfo);
+        var dashboardPage = verificationPage.validVerify(verificationCode.getCode());
 
-        // Открываем страницу
-        Selenide.open("http://localhost:9999");
-
-        // Вводим логин и пароль
-        $("[data-test-id=login] input").setValue(login);
-        $("[data-test-id=password] input").setValue(password);
-        $("[data-test-id=action-login]").click();
-
-        // Вводим код
-        $("[data-test-id=code] input").setValue(authCode);
-        $("[data-test-id=action-code]").click();
-
-        // Проверяем успешный вход
-        $("h2").shouldHave(text("Личный кабинет"));
+        dashboardPage.checkDashboardIsVisible();
     }
 
     @Test
     void shouldBlockAfterThreeWrongAttempts() {
-        Selenide.open("http://localhost:9999");
-        $("[data-test-id=login] input").setValue("vasya");
-        $("[data-test-id=password] input").setValue("wrong");
-        for (int i = 0; i < 3; i++) {
-            $("[data-test-id=action-login]").click();
-            sleep(1000); // небольшая пауза
-        }
-        $(".notification__content")
-                .shouldHave(text("Превышено количество попыток ввода кода"));
-    }
+        var loginPage = new LoginPage();
 
-    private String getAuthCodeFromDB(String login) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
-            String sql = """
-                SELECT ac.code
-                FROM auth_codes ac
-                JOIN users u ON u.id = ac.user_id
-                WHERE u.login = ?
-                ORDER BY ac.created DESC
-                LIMIT 1
-                """;
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, login);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getString("code");
-            } else {
-                throw new RuntimeException("Auth code not found for user: " + login);
-            }
+        for (int i = 0; i < 3; i++) {
+            loginPage.invalidLogin("vasya", "wrong");
         }
+
+        loginPage.checkBlockedMessage();
     }
 }
